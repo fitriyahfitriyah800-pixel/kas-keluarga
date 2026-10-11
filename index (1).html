@@ -1,0 +1,660 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Buku Kas Keluarga</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: ringkasan bulan di atas, lalu dua kolom (form + kategori | daftar transaksi). Satu kolom di layar sempit. */
+:root {
+  --bg: #F2F4F3;
+  --surface: #FFFFFF;
+  --ink: #16201D;
+  --muted: #5B6863;
+  --line: #D8DEDB;
+  --accent: #243B6B;
+  --accent-ink: #FFFFFF;
+  --accent-soft: #E3E8F3;
+  --in: #1B7A4B;
+  --out: #B03A2B;
+  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #101518;
+    --surface: #182026;
+    --ink: #E7ECEA;
+    --muted: #97A5A0;
+    --line: #2A353B;
+    --accent: #9DB4EE;
+    --accent-ink: #0E1730;
+    --accent-soft: #222E4A;
+    --in: #5FC590;
+    --out: #EF8A7A;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #101518;
+  --surface: #182026;
+  --ink: #E7ECEA;
+  --muted: #97A5A0;
+  --line: #2A353B;
+  --accent: #9DB4EE;
+  --accent-ink: #0E1730;
+  --accent-soft: #222E4A;
+  --in: #5FC590;
+  --out: #EF8A7A;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.5;
+  padding-inline: 16px;
+  padding-block: 24px 40px;
+}
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-weight: 500; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+.wrap { max-width: 1040px; margin-inline: auto; display: flex; flex-direction: column; gap: 28px; }
+
+/* Header */
+.top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; }
+.eyebrow { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+h1 { font-family: var(--font-display); font-weight: 700; font-size: clamp(1.7rem, 5vw, 2.3rem); line-height: 1.1; margin: 0; letter-spacing: -.01em; text-wrap: balance; }
+.month { display: flex; align-items: center; gap: 4px; }
+.month button {
+  width: 40px; height: 40px; border: 1px solid var(--line); background: var(--surface);
+  border-radius: 8px; display: grid; place-items: center; font-size: 18px; line-height: 1;
+}
+.month button:hover { border-color: var(--accent); }
+.month .label { min-width: 9.5rem; text-align: center; font-family: var(--font-display); font-weight: 600; font-size: 1.1rem; }
+
+/* Ringkasan */
+.sum { display: grid; grid-template-columns: 1fr; border-block: 1px solid var(--line); }
+.sum > div { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 12px 0; }
+.sum > div + div { border-top: 1px solid var(--line); }
+.sum .k { font-size: 13px; color: var(--muted); }
+.sum .v { font-size: 1.15rem; }
+.sum .v.in { color: var(--in); }
+.sum .v.out { color: var(--out); }
+.sum .rest .k { color: var(--ink); font-weight: 600; }
+.sum .rest .v { font-size: 1.5rem; font-weight: 600; }
+.kas { margin: 10px 0 0; font-size: 13px; color: var(--muted); }
+@media (min-width: 640px) {
+  .sum { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .sum > div { flex-direction: column; align-items: flex-start; gap: 2px; padding: 16px 20px; }
+  .sum > div:first-child { padding-left: 0; }
+  .sum > div + div { border-top: 0; border-left: 1px solid var(--line); }
+  .sum .v { font-size: clamp(1.15rem, 2.4vw, 1.5rem); }
+  .sum .rest .v { font-size: clamp(1.3rem, 2.8vw, 1.8rem); }
+}
+
+/* Area utama */
+.main { display: grid; gap: 28px; grid-template-columns: minmax(0, 1fr); grid-template-areas: "form" "list" "cats"; }
+.a-form { grid-area: form; min-width: 0; }
+.a-list { grid-area: list; min-width: 0; }
+.a-cats { grid-area: cats; min-width: 0; }
+@media (min-width: 860px) {
+  .main { grid-template-columns: minmax(0, 340px) minmax(0, 1fr); grid-template-areas: "form list" "cats list"; column-gap: 40px; align-items: start; }
+}
+h2 { font-family: var(--font-display); font-weight: 600; font-size: 1.15rem; margin: 0 0 12px; }
+
+/* Form */
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px; }
+.field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; min-width: 0; }
+.field > label, .field > .lbl { font-size: 13px; font-weight: 500; color: var(--muted); }
+.in-box {
+  width: 100%; min-height: 44px; padding: 8px 12px; background: var(--bg);
+  border: 1px solid var(--line); border-radius: 8px;
+}
+.in-box:focus { border-color: var(--accent); }
+.amount { position: relative; }
+.amount span { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); font-family: var(--font-mono); font-size: 14px; }
+.amount input { padding-left: 42px; font-family: var(--font-mono); font-size: 1.15rem; font-weight: 500; }
+.seg { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--bg); }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg label { text-align: center; padding: 10px 8px; cursor: pointer; font-weight: 500; font-size: 14px; color: var(--muted); }
+.seg input:checked + label { background: var(--accent); color: var(--accent-ink); }
+.seg input:focus-visible + label { outline: 2px solid var(--accent); outline-offset: -3px; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 400px) { .row2 { grid-template-columns: 1fr; gap: 0; } }
+.err { color: var(--out); font-size: 13px; min-height: 1.2em; margin: -6px 0 8px; }
+.btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn-main {
+  flex: 1 1 auto; min-height: 46px; padding: 0 18px; border: 0; border-radius: 8px;
+  background: var(--accent); color: var(--accent-ink); font-weight: 600;
+}
+.btn-main:disabled { opacity: .6; cursor: default; }
+.btn-ghost { min-height: 46px; padding: 0 16px; border: 1px solid var(--line); border-radius: 8px; background: transparent; }
+.btn-ghost:hover { border-color: var(--accent); }
+
+/* Kategori */
+.cats { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.cats li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; font-size: 14px; }
+.cats .nm { min-width: 0; overflow-wrap: anywhere; }
+.cats .pc { color: var(--muted); font-size: 12px; margin-left: 6px; }
+.cats .bar { grid-column: 1 / -1; height: 6px; background: var(--accent-soft); border-radius: 3px; overflow: hidden; }
+.cats .bar i { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
+
+/* Daftar */
+.tools { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 8px; }
+.chips { display: flex; gap: 6px; }
+.chips input { position: absolute; opacity: 0; pointer-events: none; }
+.chips label { padding: 7px 14px; border: 1px solid var(--line); border-radius: 999px; font-size: 13px; cursor: pointer; background: var(--surface); }
+.chips input:checked + label { background: var(--accent-soft); border-color: var(--accent); color: var(--ink); font-weight: 600; }
+.chips input:focus-visible + label { outline: 2px solid var(--accent); outline-offset: 2px; }
+.search { flex: 1 1 10rem; min-width: 0; min-height: 38px; padding: 6px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+.search:focus { border-color: var(--accent); }
+.head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.head h2 { margin-bottom: 8px; }
+.link { border: 0; background: none; color: var(--accent); font-size: 13px; font-weight: 500; text-decoration: underline; padding: 6px 0; }
+.list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+.item { display: grid; grid-template-columns: 3.4rem minmax(0, 1fr) auto; gap: 0 12px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.item .d { font-size: 12px; color: var(--muted); line-height: 1.3; }
+.item .d b { display: block; font-size: 15px; font-weight: 600; color: var(--ink); }
+.item .m { min-width: 0; }
+.item .cat { font-weight: 500; display: block; overflow-wrap: anywhere; }
+.item .note { display: block; font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+.item .amt { text-align: right; white-space: nowrap; align-self: start; }
+.item .amt.in { color: var(--in); }
+.item .amt.out { color: var(--out); }
+.item .act { grid-column: 2 / 4; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; margin-top: 4px; }
+.item .act button { border: 0; background: none; padding: 4px 0; font-size: 13px; color: var(--muted); text-decoration: underline; }
+.item .act button:hover { color: var(--ink); }
+.item .act .danger { color: var(--out); }
+.item .act .ask { font-size: 13px; }
+.item.editing { background: var(--accent-soft); margin-inline: -8px; padding-inline: 8px; border-radius: 6px; }
+.empty { padding: 28px 0; color: var(--muted); border-bottom: 1px solid var(--line); }
+.empty b { color: var(--ink); display: block; margin-bottom: 4px; }
+.sample { margin: 0 0 12px; padding: 10px 12px; border-radius: 8px; background: var(--accent-soft); font-size: 13px; }
+.sample b { font-weight: 600; }
+.foot { font-size: 12.5px; color: var(--muted); max-width: 62ch; margin: 0; }
+
+.data { margin-top: 32px; }
+.saved { margin: 0 0 12px; font-size: 13px; color: var(--muted); }
+.saved b { color: var(--in); font-weight: 600; }
+.dbtns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+.dbtns .btn-ghost { min-height: 42px; padding: 6px 10px; font-size: 14px; background: var(--surface); }
+@media (max-width: 400px) { .dbtns { grid-template-columns: 1fr; } }
+#fallback textarea { font-family: var(--font-mono); font-size: 12px; margin-bottom: 8px; resize: vertical; }
+#toast {
+  position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%); max-width: calc(100% - 32px);
+  background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 8px; font-size: 14px; z-index: 5;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .cats .bar i { transition: width .25s ease; }
+}
+</style>
+<style>body{margin:0}</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <p class="eyebrow">Catatan rumah tangga</p>
+      <h1>Buku Kas Keluarga</h1>
+    </div>
+    <div class="month" role="group" aria-label="Pilih bulan">
+      <button type="button" id="prev" aria-label="Bulan sebelumnya">&#8249;</button>
+      <div class="label" id="monthLabel" aria-live="polite"></div>
+      <button type="button" id="next" aria-label="Bulan berikutnya">&#8250;</button>
+    </div>
+  </header>
+
+  <section aria-label="Ringkasan bulan ini">
+    <div class="sum">
+      <div><span class="k">Pemasukan</span><span class="v num in" id="sumIn">Rp&nbsp;0</span></div>
+      <div><span class="k">Pengeluaran</span><span class="v num out" id="sumOut">Rp&nbsp;0</span></div>
+      <div class="rest"><span class="k">Sisa bulan ini</span><span class="v num" id="sumRest">Rp&nbsp;0</span></div>
+    </div>
+    <p class="kas" id="kas"></p>
+  </section>
+
+  <div class="main">
+    <section class="a-form" aria-labelledby="formTitle">
+      <h2 id="formTitle">Catat transaksi</h2>
+      <form class="panel" id="form" novalidate>
+        <div class="field">
+          <span class="lbl" id="typeLbl">Jenis</span>
+          <div class="seg" role="radiogroup" aria-labelledby="typeLbl">
+            <input type="radio" name="type" id="t-out" value="out" checked><label for="t-out">Pengeluaran</label>
+            <input type="radio" name="type" id="t-in" value="in"><label for="t-in">Pemasukan</label>
+          </div>
+        </div>
+        <div class="field">
+          <label for="amount">Jumlah</label>
+          <div class="amount"><span>Rp</span><input class="in-box" id="amount" inputmode="numeric" autocomplete="off" placeholder="0"></div>
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label for="cat">Kategori</label>
+            <select class="in-box" id="cat"></select>
+          </div>
+          <div class="field">
+            <label for="date">Tanggal</label>
+            <input class="in-box" type="date" id="date">
+          </div>
+        </div>
+        <div class="field">
+          <label for="note">Catatan (boleh kosong)</label>
+          <input class="in-box" id="note" maxlength="120" autocomplete="off" placeholder="Contoh: beras 10 kg">
+        </div>
+        <div class="err" id="err" role="alert"></div>
+        <div class="btns">
+          <button class="btn-main" type="submit" id="save">Simpan</button>
+          <button class="btn-ghost" type="button" id="cancel" hidden>Batal</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="a-list" aria-labelledby="listTitle">
+      <div class="head">
+        <h2 id="listTitle">Transaksi</h2>
+      </div>
+      <div class="tools">
+        <div class="chips" role="radiogroup" aria-label="Saring jenis">
+          <input type="radio" name="filter" id="f-all" value="all" checked><label for="f-all">Semua</label>
+          <input type="radio" name="filter" id="f-in" value="in"><label for="f-in">Masuk</label>
+          <input type="radio" name="filter" id="f-out" value="out"><label for="f-out">Keluar</label>
+        </div>
+        <label class="sr" for="q">Cari transaksi</label>
+        <input class="search" id="q" type="search" placeholder="Cari kategori atau catatan" autocomplete="off">
+      </div>
+      <div id="sampleBanner"></div>
+      <ul class="list" id="list"></ul>
+    </section>
+
+    <section class="a-cats" aria-labelledby="catTitle">
+      <h2 id="catTitle">Pengeluaran per kategori</h2>
+      <ul class="cats" id="cats"></ul>
+      <div class="data">
+        <h2>Simpan &amp; unduh</h2>
+        <p class="saved" id="saved"></p>
+        <div class="dbtns">
+          <button class="btn-ghost" type="button" id="exMonth">Unduh bulan ini (CSV)</button>
+          <button class="btn-ghost" type="button" id="exAll">Unduh semua (CSV)</button>
+          <button class="btn-ghost" type="button" id="exJson">Cadangkan (JSON)</button>
+          <button class="btn-ghost" type="button" id="imp">Pulihkan dari cadangan</button>
+          <input type="file" id="impFile" accept=".json,application/json" hidden>
+        </div>
+        <div id="fallback" hidden>
+          <p class="saved">Unduhan tidak tersedia di tampilan ini. Salin teks di bawah, lalu tempel ke Excel, Notepad, atau catatan lain.</p>
+          <label class="sr" for="fbText">Teks untuk disalin</label>
+          <textarea class="in-box" id="fbText" rows="6" readonly></textarea>
+          <button class="btn-ghost" type="button" id="fbCopy">Salin teks</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <p class="foot" id="foot">Menghubungkan penyimpanan…</p>
+</div>
+<div id="toast" role="status" hidden></div>
+
+<script>
+(function () {
+  "use strict";
+
+  var CATS = {
+    out: ["Belanja dapur", "Gas LPG", "Listrik (token PLN)", "Air (PDAM)", "Pulsa & internet", "Sekolah anak", "Transportasi & BBM", "Kesehatan", "Cicilan", "Arisan", "Zakat & sedekah", "Lain-lain"],
+    "in": ["Gaji", "Usaha", "Kiriman keluarga", "Lain-lain"]
+  };
+  var nf = new Intl.NumberFormat("id-ID");
+  var monthFmt = new Intl.DateTimeFormat("id-ID", { month: "long", year: "numeric" });
+  var wdFmt = new Intl.DateTimeFormat("id-ID", { weekday: "short" });
+  var mFmt = new Intl.DateTimeFormat("id-ID", { month: "short" });
+
+  function rp(n) { return (n < 0 ? "−" : "") + "Rp " + nf.format(Math.abs(Math.round(n))); }
+  function pad(n) { return (n < 10 ? "0" : "") + n; }
+  function dstr(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function parseD(s) { var p = s.split("-"); return new Date(+p[0], +p[1] - 1, +p[2]); }
+  function $(id) { return document.getElementById(id); }
+
+  var today = new Date();
+  var state = {
+    txs: [], loaded: false, storage: "pending",
+    month: dstr(today).slice(0, 7), filter: "all", q: "",
+    type: "out", editing: null, confirmDel: null
+  };
+  var backend = null;
+
+  /* ---------- Contoh data (tidak disimpan) ---------- */
+  function sampleData() {
+    var first = new Date(today.getFullYear(), today.getMonth(), 1);
+    function at(back) { var d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - back); if (d < first) d = first; return dstr(d); }
+    var rows = [
+      [10, "in", "Gaji", "Gaji bulanan", 6500000],
+      [9, "out", "Cicilan", "Cicilan motor", 850000],
+      [8, "out", "Listrik (token PLN)", "Token 100 rb", 100000],
+      [7, "out", "Belanja dapur", "Belanja pasar", 185000],
+      [6, "out", "Sekolah anak", "Iuran SD", 150000],
+      [5, "in", "Usaha", "Jualan online", 1200000],
+      [4, "out", "Pulsa & internet", "Paket data", 75000],
+      [3, "out", "Transportasi & BBM", "Bensin motor", 50000],
+      [2, "out", "Arisan", "Arisan RT", 100000],
+      [1, "out", "Belanja dapur", "Beras 10 kg", 145000]
+    ];
+    return rows.map(function (r, i) { return { id: "contoh-" + i, date: at(r[0]), type: r[1], cat: r[2], note: r[3], amount: r[4], createdAt: i }; });
+  }
+
+  /* ---------- Penyimpanan ---------- */
+  function newLocalId() { return "t" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+
+  function useLocal() {
+    var LS = "bukukas.v1", ok = true;
+    try { var raw = localStorage.getItem(LS); state.txs = raw ? (JSON.parse(raw) || []) : []; } catch (e) { state.txs = []; ok = false; }
+    function persist() { try { localStorage.setItem(LS, JSON.stringify(state.txs)); } catch (e) { ok = false; state.storage = "memory"; } }
+    backend = {
+      newId: newLocalId,
+      save: function (id, data) {
+        var rec = Object.assign({ id: id }, data), i = -1;
+        state.txs.forEach(function (t, k) { if (t.id === id) i = k; });
+        if (i >= 0) state.txs[i] = rec; else state.txs.push(rec);
+        persist(); return Promise.resolve();
+      },
+      remove: function (id) { state.txs = state.txs.filter(function (t) { return t.id !== id; }); persist(); return Promise.resolve(); }
+    };
+    state.storage = ok ? "local" : "memory";
+    state.loaded = true;
+    render();
+  }
+
+  async function initStorage() {
+    var c = window.claude;
+    if (!c || typeof c.use !== "function") { useLocal(); return; }
+    var db = null, uid = null;
+    try {
+      var user = await c.use("user");
+      db = await c.use("db");
+      if (user && db) uid = await user.id();
+    } catch (e) { db = null; uid = null; }
+    try {
+      var dl = await c.use("downloads");
+      if (dl) { downloads = dl; render(); }
+    } catch (e) {}
+    if (!db || !uid) { useLocal(); return; }
+    var col = db.collection("data/users/" + uid);
+    backend = {
+      newId: function () { return col.doc().id; },
+      save: function (id, data) { return col.doc(id).set(data); },
+      remove: function (id) { return col.doc(id).delete(); }
+    };
+    col.onSnapshot(function (snap) {
+      state.txs = snap.docs.map(function (d) { return Object.assign({ id: d.id }, d.data()); });
+      state.loaded = true; state.storage = "cloud"; render();
+    }, function () { useLocal(); });
+  }
+  var downloads = null;
+
+  /* ---------- Hitung ---------- */
+  function visibleTxs() { return state.txs.length ? state.txs : (state.loaded ? sampleData() : []); }
+  function isSample() { return state.loaded && state.txs.length === 0; }
+  function byDateDesc(a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : (b.createdAt || 0) - (a.createdAt || 0); }
+
+  /* ---------- Render ---------- */
+  var toastTimer;
+  function toast(msg) {
+    var t = $("toast"); t.textContent = msg; t.hidden = false;
+    clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.hidden = true; }, 3500);
+  }
+
+  function render() {
+    var all = visibleTxs(), sample = isSample();
+    var d = new Date(+state.month.slice(0, 4), +state.month.slice(5) - 1, 1);
+    var label = monthFmt.format(d);
+    $("monthLabel").textContent = label.charAt(0).toUpperCase() + label.slice(1);
+
+    var inMonth = all.filter(function (t) { return t.date && t.date.slice(0, 7) === state.month; });
+    var ins = 0, outs = 0, bal = 0, byCat = {};
+    inMonth.forEach(function (t) {
+      if (t.type === "in") ins += t.amount; else { outs += t.amount; byCat[t.cat] = (byCat[t.cat] || 0) + t.amount; }
+    });
+    all.forEach(function (t) { bal += t.type === "in" ? t.amount : -t.amount; });
+    var rest = ins - outs;
+    $("sumIn").textContent = rp(ins);
+    $("sumOut").textContent = rp(outs);
+    var restEl = $("sumRest"); restEl.textContent = rp(rest);
+    restEl.style.color = rest < 0 ? "var(--out)" : "";
+    $("kas").textContent = state.loaded ? "Saldo kas keseluruhan" + (sample ? " (contoh)" : "") + ": " + rp(bal) : "";
+
+    // kategori
+    var keys = Object.keys(byCat).sort(function (a, b) { return byCat[b] - byCat[a]; });
+    $("cats").innerHTML = keys.length ? keys.map(function (k) {
+      var pct = outs ? Math.round(byCat[k] / outs * 100) : 0;
+      return '<li><span class="nm">' + esc(k) + '<span class="pc">' + pct + '%</span></span><span class="num">' + rp(byCat[k]) + '</span><span class="bar"><i style="width:' + pct + '%"></i></span></li>';
+    }).join("") : '<li style="display:block;color:var(--muted)">Belum ada pengeluaran bulan ini.</li>';
+
+    // daftar
+    var rows = inMonth.filter(function (t) {
+      if (state.filter !== "all" && t.type !== state.filter) return false;
+      if (state.q) { var h = (t.cat + " " + (t.note || "")).toLowerCase(); if (h.indexOf(state.q.toLowerCase()) < 0) return false; }
+      return true;
+    }).sort(byDateDesc);
+
+    $("sampleBanner").innerHTML = sample ? '<p class="sample"><b>Ini contoh data.</b> Contoh akan hilang begitu Anda menyimpan transaksi pertama.</p>' : "";
+    var list = $("list");
+    if (!state.loaded) {
+      list.innerHTML = '<li class="empty">Memuat catatan…</li>';
+    } else if (!rows.length) {
+      list.innerHTML = '<li class="empty"><b>' + (inMonth.length ? "Tidak ada yang cocok." : "Belum ada catatan bulan ini.") + '</b>' +
+        (inMonth.length ? "Ubah penyaring atau kata pencarian." : "Isi formulir di samping untuk mencatat pemasukan atau pengeluaran pertama.") + '</li>';
+    } else {
+      list.innerHTML = rows.map(function (t) {
+        var dt = parseD(t.date), out = t.type !== "in";
+        var act = "";
+        if (!sample) {
+          if (state.confirmDel === t.id) {
+            act = '<div class="act"><span class="ask">Hapus catatan ini?</span><button type="button" class="danger" data-act="del-yes" data-id="' + esc(t.id) + '">Ya, hapus</button><button type="button" data-act="del-no">Batal</button></div>';
+          } else {
+            act = '<div class="act"><button type="button" data-act="edit" data-id="' + esc(t.id) + '">Ubah</button><button type="button" data-act="del" data-id="' + esc(t.id) + '">Hapus</button></div>';
+          }
+        }
+        return '<li class="item' + (state.editing === t.id ? " editing" : "") + '">' +
+          '<div class="d">' + esc(wdFmt.format(dt)) + '<b>' + dt.getDate() + " " + esc(mFmt.format(dt)) + '</b></div>' +
+          '<div class="m"><span class="cat">' + esc(t.cat) + '</span>' + (t.note ? '<span class="note">' + esc(t.note) + '</span>' : "") + '</div>' +
+          '<div class="amt num ' + (out ? "out" : "in") + '">' + (out ? "− " : "+ ") + rp(t.amount) + '</div>' + act + '</li>';
+      }).join("");
+    }
+
+    var n = state.txs.length;
+    var savedMsg = {
+      pending: "Menghubungkan penyimpanan…",
+      cloud: "<b>Tersimpan otomatis</b> di akun Anda. " + n + " catatan.",
+      local: "<b>Tersimpan otomatis</b> di komputer ini. " + n + " catatan.",
+      memory: "Belum tersimpan permanen. Unduh cadangan sebelum menutup halaman."
+    };
+    $("saved").innerHTML = state.loaded && sample ? "Belum ada catatan. Simpan transaksi pertama Anda." : (savedMsg[state.storage] || "");
+
+    var msg = {
+      pending: "Menghubungkan penyimpanan…",
+      cloud: "Catatan tersimpan di akun Anda dan tidak terlihat oleh orang lain yang membuka halaman ini.",
+      local: "Catatan tersimpan di komputer ini. Jika aplikasi dihapus atau datanya dibersihkan, catatan ikut hilang, jadi cadangkan secara berkala.",
+      memory: "Penyimpanan komputer tidak tersedia, jadi catatan hanya bertahan selama aplikasi terbuka. Unduh CSV sebelum menutupnya."
+    };
+    $("foot").textContent = msg[state.storage] || "";
+  }
+
+  /* ---------- Form ---------- */
+  var elAmount = $("amount"), elCat = $("cat"), elDate = $("date"), elNote = $("note"), elErr = $("err");
+
+  function fillCats(selected) {
+    elCat.innerHTML = CATS[state.type].map(function (c) { return '<option value="' + esc(c) + '">' + esc(c) + "</option>"; }).join("");
+    if (selected && CATS[state.type].indexOf(selected) >= 0) elCat.value = selected;
+  }
+  function setType(t) {
+    state.type = t; $(t === "in" ? "t-in" : "t-out").checked = true; fillCats();
+  }
+  function resetForm() {
+    state.editing = null; elAmount.value = ""; elNote.value = ""; elErr.textContent = "";
+    $("save").textContent = "Simpan"; $("cancel").hidden = true; $("formTitle").textContent = "Catat transaksi";
+  }
+  function fmtAmountInput() {
+    var digits = elAmount.value.replace(/\D/g, "").replace(/^0+/, "");
+    elAmount.value = digits ? nf.format(parseInt(digits, 10)) : "";
+  }
+
+  elAmount.addEventListener("input", fmtAmountInput);
+  document.querySelectorAll('input[name="type"]').forEach(function (r) {
+    r.addEventListener("change", function () { if (r.checked) { state.type = r.value; fillCats(); } });
+  });
+  document.querySelectorAll('input[name="filter"]').forEach(function (r) {
+    r.addEventListener("change", function () { if (r.checked) { state.filter = r.value; render(); } });
+  });
+  $("q").addEventListener("input", function (e) { state.q = e.target.value.trim(); render(); });
+
+  function shiftMonth(delta) {
+    var y = +state.month.slice(0, 4), m = +state.month.slice(5) - 1 + delta;
+    var d = new Date(y, m, 1); state.month = d.getFullYear() + "-" + pad(d.getMonth() + 1);
+    state.confirmDel = null; render();
+  }
+  $("prev").addEventListener("click", function () { shiftMonth(-1); });
+  $("next").addEventListener("click", function () { shiftMonth(1); });
+
+  $("cancel").addEventListener("click", function () { resetForm(); render(); });
+
+  $("form").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    elErr.textContent = "";
+    var amount = parseInt(elAmount.value.replace(/\D/g, ""), 10) || 0;
+    var date = elDate.value;
+    if (!amount) { elErr.textContent = "Isi jumlah lebih dari nol."; elAmount.focus(); return; }
+    if (!date) { elErr.textContent = "Pilih tanggal transaksi."; elDate.focus(); return; }
+    if (!backend) { toast("Penyimpanan belum siap. Coba lagi sebentar."); return; }
+    var id = state.editing || backend.newId();
+    var old = state.txs.filter(function (t) { return t.id === id; })[0];
+    var data = { type: state.type, amount: amount, cat: elCat.value, note: elNote.value.trim().slice(0, 120), date: date, createdAt: old && old.createdAt ? old.createdAt : Date.now() };
+    var btn = $("save"); btn.disabled = true;
+    try {
+      await backend.save(id, data);
+      var wasEdit = !!state.editing;
+      if (date.slice(0, 7) !== state.month) state.month = date.slice(0, 7);
+      resetForm(); render();
+      toast(wasEdit ? "Perubahan disimpan." : (data.type === "in" ? "Pemasukan dicatat." : "Pengeluaran dicatat."));
+      elAmount.focus();
+    } catch (err) {
+      toast("Catatan belum tersimpan. Akun Anda mungkin tidak punya izin menulis di halaman ini.");
+    } finally { btn.disabled = false; }
+  });
+
+  $("list").addEventListener("click", async function (e) {
+    var b = e.target.closest("button[data-act]"); if (!b) return;
+    var act = b.getAttribute("data-act"), id = b.getAttribute("data-id");
+    if (act === "edit") {
+      var t = state.txs.filter(function (x) { return x.id === id; })[0]; if (!t) return;
+      state.editing = id; state.confirmDel = null;
+      setType(t.type); fillCats(t.cat);
+      elAmount.value = nf.format(t.amount); elDate.value = t.date; elNote.value = t.note || "";
+      $("save").textContent = "Simpan perubahan"; $("cancel").hidden = false; $("formTitle").textContent = "Ubah transaksi";
+      render();
+      $("form").scrollIntoView({ block: "center" });
+      elAmount.focus();
+    } else if (act === "del") { state.confirmDel = id; render(); }
+    else if (act === "del-no") { state.confirmDel = null; render(); }
+    else if (act === "del-yes") {
+      try {
+        await backend.remove(id);
+        if (state.editing === id) resetForm();
+        state.confirmDel = null; render(); toast("Catatan dihapus.");
+      } catch (err) { toast("Catatan belum terhapus. Coba lagi."); }
+    }
+  });
+
+  /* ---------- Ekspor CSV ---------- */
+  function csvFor(list) {
+    function q(s) { return '"' + String(s == null ? "" : s).replace(/"/g, '""') + '"'; }
+    var rows = list.slice().sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+    var lines = ["Tanggal,Jenis,Kategori,Catatan,Jumlah"].concat(rows.map(function (t) {
+      return [t.date, t.type === "in" ? "Pemasukan" : "Pengeluaran", q(t.cat), q(t.note), t.amount].join(",");
+    }));
+    return "﻿" + lines.join("\r\n");
+  }
+  function showFallback(text) {
+    $("fallback").hidden = false; $("fbText").value = text;
+    $("fallback").scrollIntoView({ block: "nearest" });
+  }
+  async function deliver(filename, text, count) {
+    if (!count) { toast("Belum ada catatan untuk diunduh."); return; }
+    try {
+      var blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+      var a = document.createElement("a");
+      a.href = URL.createObjectURL(blob); a.download = filename;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+      toast("File diunduh: " + filename + ". Cek folder Unduhan.");
+      return;
+    } catch (err) {}
+    if (downloads) {
+      try { await downloads.save({ filename: filename, data: text }); return; }
+      catch (err) { if (err && err.code === "declined") return; }
+    }
+    showFallback(text);
+  }
+  $("exMonth").addEventListener("click", function () {
+    var rows = state.txs.filter(function (t) { return t.date.slice(0, 7) === state.month; });
+    deliver("kas-keluarga-" + state.month + ".csv", csvFor(rows), rows.length);
+  });
+  $("exAll").addEventListener("click", function () {
+    deliver("kas-keluarga-semua.csv", csvFor(state.txs), state.txs.length);
+  });
+  $("exJson").addEventListener("click", function () {
+    var out = state.txs.map(function (t) { return { id: t.id, type: t.type, amount: t.amount, cat: t.cat, note: t.note || "", date: t.date, createdAt: t.createdAt || 0 }; });
+    deliver("kas-keluarga-cadangan-" + dstr(new Date()) + ".json", JSON.stringify(out, null, 2), out.length);
+  });
+  $("fbCopy").addEventListener("click", function () {
+    var ta = $("fbText");
+    ta.select();
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(ta.value).then(function () { toast("Teks disalin."); }, function () { toast("Teks sudah dipilih. Tekan Salin di keyboard Anda."); });
+    } else { toast("Teks sudah dipilih. Tekan Salin di keyboard Anda."); }
+  });
+
+  /* ---------- Pulihkan dari cadangan ---------- */
+  $("imp").addEventListener("click", function () { $("impFile").click(); });
+  $("impFile").addEventListener("change", async function (e) {
+    var f = e.target.files && e.target.files[0]; e.target.value = "";
+    if (!f) return;
+    if (!backend) { toast("Penyimpanan belum siap. Coba lagi sebentar."); return; }
+    var arr;
+    try { arr = JSON.parse(await f.text()); if (!Array.isArray(arr)) throw new Error("bad"); }
+    catch (err) { toast("File cadangan tidak dapat dibaca. Pilih file JSON dari tombol Cadangkan."); return; }
+    var ok = 0;
+    try {
+      for (var i = 0; i < arr.length; i++) {
+        var t = arr[i];
+        if (!t || (t.type !== "in" && t.type !== "out") || !(t.amount > 0) || !/^\d{4}-\d{2}-\d{2}$/.test(t.date || "") || typeof t.cat !== "string") continue;
+        var id = typeof t.id === "string" && /^[A-Za-z0-9_-]{1,64}$/.test(t.id) ? t.id : backend.newId();
+        await backend.save(id, { type: t.type, amount: Math.round(t.amount), cat: t.cat.slice(0, 40), note: String(t.note || "").slice(0, 120), date: t.date, createdAt: t.createdAt || Date.now() });
+        ok++;
+      }
+      render();
+      toast(ok ? ok + " catatan dipulihkan." : "Tidak ada catatan valid di file itu.");
+    } catch (err) { render(); toast("Pemulihan berhenti di tengah jalan. " + ok + " catatan sudah masuk."); }
+  });
+
+  /* ---------- Mulai ---------- */
+  elDate.value = dstr(today);
+  fillCats();
+  render();
+  initStorage();
+})();
+</script>
+
+</body>
+</html>

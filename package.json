@@ -1,0 +1,8 @@
+{
+  "name": "buku-kas-keluarga",
+  "version": "1.0.0",
+  "description": "Catat pemasukan dan pengeluaran keuangan rumah tangga",
+  "main": "main.js",
+  "license": "UNLICENSED",
+  "private": true
+}
